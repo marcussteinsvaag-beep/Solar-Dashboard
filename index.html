@@ -691,7 +691,6 @@ async function loadTibber() {
       name
       homes {
         address { address1 }
-        features { isProductionMetered }
         currentSubscription {
           priceInfo {
             current { total currency }
@@ -737,12 +736,10 @@ async function loadTibber() {
     // Debug: logg til konsoll så vi kan se hva Tibber returnerer
     console.log('=== TIBBER DEBUG ===');
     console.log('Valgt abonnement:', home.address?.address1);
-    console.log('isProductionMetered:', home.features?.isProductionMetered);
     console.log('Månedlig produksjon (nodes):', JSON.stringify(home.production?.nodes));
     console.log('Daglig produksjon (siste 5):', JSON.stringify(home.dailyProduction?.nodes?.slice(-5)));
     console.log('Alle homes:', viewer.homes.map(h => ({
       adresse: h.address?.address1,
-      prodMetered: h.features?.isProductionMetered,
       prodNodes: h.production?.nodes?.length,
       prodKwh: h.production?.nodes?.reduce((s,n) => s+(n.production||0), 0)
     })));
