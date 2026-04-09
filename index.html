@@ -739,27 +739,11 @@ async function loadTibber() {
     ) || viewer.homes[0];
     tibberData = { viewer, home };
 
-    // Debug: logg til konsoll så vi kan se hva Tibber returnerer
+    // Debug: logg til konsoll
     console.log('=== TIBBER DEBUG ===');
     console.log('Valgt abonnement:', home.address?.address1);
     console.log('Månedlig produksjon (nodes):', JSON.stringify(home.production?.nodes));
-    console.log('Daglig produksjon (siste 5):', JSON.stringify(home.dailyProduction?.nodes?.slice(-5)));
-    console.log('Alle homes:', viewer.homes.map(h => ({
-      adresse: h.address?.address1,
-      prodNodes: h.production?.nodes?.length,
-      prodKwh: h.production?.nodes?.reduce((s,n) => s+(n.production||0), 0)
-    })));
-
-    // Vis debug på siden også
-    const debugEl = document.getElementById('tibber-status');
-    const totalProdKwh = hourlyProd.reduce((s,n) => s+(n.production||0), 0);
-    const totalProdKr = hourlyProd.reduce((s,n) => s+(n.profit||0), 0);
-    const dailyWithData = hourlyProd.filter(n => (n.production||0) > 0);
-    debugEl.className = totalProdKwh > 0 ? 'msg success' : 'msg error';
-    debugEl.textContent = totalProdKwh > 0
-      ? `✓ Tibber har produksjonsdata. Totalt siste periode: ${totalProdKwh.toFixed(0)} kWh / ${totalProdKr.toFixed(0)} kr. Timer med data: ${dailyWithData.length}`
-      : `⚠ Tibber returnerer 0 kWh i alle ${hourlyProd.length} produksjonsnoder. Sjekk konsoll (F12) for rådata.`;
-    debugEl.style.display = 'block';
+    console.log('Timesproduksjon (siste 5):', JSON.stringify(home.hourlyProduction?.nodes?.slice(-5)));
 
     renderTibber(home);
     document.getElementById('status-txt').textContent = 'Tilkoblet ✓';
@@ -832,6 +816,15 @@ function renderTibber(home) {
 
   const harSalgsdata = hourlyProd.some(n => (n.production||0) > 0);
   const harDagSalg = hourlyProd.filter(n => new Date(n.from).toDateString() === today).some(n => (n.production||0) > 0);
+
+  // Debug-visning på siden
+  const debugEl = document.getElementById('tibber-status');
+  const totalProdKwh = hourlyProd.reduce((s,n) => s+(n.production||0), 0);
+  debugEl.className = harSalgsdata ? 'msg success' : 'msg error';
+  debugEl.textContent = harSalgsdata
+    ? `✓ Timesdata: ${totalProdKwh.toFixed(0)} kWh produksjonsdata funnet. Denne måneden: ${soldKwhMonth.toFixed(0)} kWh → ${soldThisMonth.toFixed(0)} kr`
+    : `⚠ Tibber returnerer 0 kWh i alle ${hourlyProd.length} produksjonsnoder (timesdata). Månedlig: ${home.production?.nodes?.length} noder.`;
+  debugEl.style.display = 'block';
 
   document.getElementById('t-sold-today').textContent = harDagSalg
     ? soldKwhToday.toFixed(1) + ' kWh → ' + soldToday.toFixed(0) + ' kr'
