@@ -744,6 +744,19 @@ async function loadTibber() {
       prodKwh: h.production?.nodes?.reduce((s,n) => s+(n.production||0), 0)
     })));
 
+    // Vis debug på siden også
+    const debugEl = document.getElementById('tibber-status');
+    const allProd = home.production?.nodes || [];
+    const allDaily = home.dailyProduction?.nodes || [];
+    const totalProdKwh = allProd.reduce((s,n) => s+(n.production||0), 0);
+    const totalProdKr = allProd.reduce((s,n) => s+(n.profit||0), 0);
+    const dailyWithData = allDaily.filter(n => (n.production||0) > 0);
+    debugEl.className = totalProdKwh > 0 ? 'msg success' : 'msg error';
+    debugEl.textContent = totalProdKwh > 0
+      ? `✓ Tibber har ${allProd.length} måneder produksjonsdata. Totalt: ${totalProdKwh.toFixed(0)} kWh / ${totalProdKr.toFixed(0)} kr. Daglige noder med data: ${dailyWithData.length}`
+      : `⚠ Tibber returnerer 0 kWh i alle ${allProd.length} produksjonsnoder. Daglige noder: ${allDaily.length}, noder med data: ${dailyWithData.length}. Sjekk konsoll (F12) for rådata.`;
+    debugEl.style.display = 'block';
+
     renderTibber(home);
     document.getElementById('status-txt').textContent = 'Tilkoblet ✓';
     document.getElementById('status-dot').style.background = '#4ad278';
