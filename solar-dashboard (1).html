@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solcelle Dashboard – Vestliveien 20B</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f0d;
+    --surface: #111a15;
+    --surface2: #182210;
+    --border: rgba(74,210,120,0.12);
+    --green: #4ad278;
+    --green-dim: #2a7a47;
+    --green-glow: rgba(74,210,120,0.15);
+    --amber: #f5c842;
+    --blue: #5ab4f5;
+    --text: #e8f5ee;
+    --text-muted: #6b8f78;
+    --text-dim: #3d5c48;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Syne', sans-serif;
+    --radius: 12px;
+    --anlegg-kostnad: 80000;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* Grid lines background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(74,210,120,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74,210,120,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .header-left {}
+  .site-name {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--green);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  h1 {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text);
+  }
+  .header-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    margin-top: 6px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 8px var(--green); }
+    50% { opacity: 0.5; box-shadow: 0 0 4px var(--green); }
+  }
+  .status-txt { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+
+  /* Token setup */
+  .setup-card {
+    background: var(--surface);
+    border: 1px solid rgba(90,180,245,0.2);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .setup-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--blue);
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .setup-card input[type="text"] {
+    flex: 1;
+    min-width: 200px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(90,180,245,0.2);
+    border-radius: 8px;
+    padding: 8px 14px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+  }
+  .setup-card input:focus { border-color: var(--blue); }
+  .setup-card button {
+    background: var(--blue);
+    color: #0a0f0d;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 20px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  .setup-card button:hover { opacity: 0.85; }
+  .setup-hint { font-size: 11px; color: var(--text-muted); width: 100%; font-family: var(--mono); }
+
+  /* Big metrics row */
+  .metrics-primary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+  .metric-big {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .metric-big:hover { border-color: rgba(74,210,120,0.3); }
+  .metric-big::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-color, var(--green));
+    opacity: 0.6;
+  }
+  .metric-big.amber::before { --accent-color: var(--amber); }
+  .metric-big.blue::before { --accent-color: var(--blue); }
+  .metric-tag {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .metric-val {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--green);
+    font-family: var(--mono);
+  }
+  .metric-big.amber .metric-val { color: var(--amber); }
+  .metric-big.blue .metric-val { color: var(--blue); }
+  .metric-unit {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-left: 4px;
+  }
+  .metric-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    margin-top: 6px;
+  }
+
+  /* Section title */
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    margin-top: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Chart area */
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .chart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chart-title { font-size: 14px; font-weight: 600; color: var(--text); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; }
+  .legend-item {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-muted); font-family: var(--mono);
+  }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  .bars { display: flex; flex-direction: column; gap: 6px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-month { font-size: 11px; color: var(--text-dim); font-family: var(--mono); width: 28px; text-align: right; flex-shrink: 0; }
+  .bar-track {
+    flex: 1;
+    height: 22px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 4px;
+    overflow: hidden;
+    display: flex;
+    position: relative;
+  }
+  .bar-seg { height: 100%; transition: width 0.5s cubic-bezier(0.4,0,0.2,1); }
+  .bar-num {
+    position: absolute; right: 8px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px; font-family: var(--mono); color: var(--text-muted);
+  }
+
+  /* Two col grid */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 600px) { .two-col { grid-template-columns: 1fr; } }
+
+  /* Payback card */
+  .payback-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .payback-headline {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+    font-family: var(--mono);
+  }
+  .payback-years {
+    font-size: 52px;
+    font-weight: 800;
+    color: var(--green);
+    font-family: var(--mono);
+    line-height: 1;
+    margin-bottom: 1rem;
+  }
+  .payback-years span { font-size: 20px; color: var(--text-muted); margin-left: 6px; }
+  .payback-track-wrap { margin-bottom: 1rem; }
+  .payback-track {
+    width: 100%; height: 8px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .payback-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--green-dim), var(--green));
+    border-radius: 4px;
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  }
+  .payback-axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+
+  /* Manual input */
+  .manual-card {
+    background: var(--surface2);
+    border: 1px solid rgba(245,200,66,0.12);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+  }
+  .manual-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 1rem;
+  }
+  .manual-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+  @media (max-width: 500px) { .manual-grid { grid-template-columns: repeat(2, 1fr); } }
+  .manual-input-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .manual-input-label { font-size: 10px; color: var(--text-dim); font-family: var(--mono); }
+  .manual-input-wrap input {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(245,200,66,0.15);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    width: 100%;
+  }
+  .manual-input-wrap input:focus { border-color: var(--amber); }
+  .manual-save {
+    margin-top: 12px;
+    background: transparent;
+    border: 1px solid rgba(245,200,66,0.3);
+    color: var(--amber);
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .manual-save:hover { background: rgba(245,200,66,0.08); }
+
+  /* Slider row */
+  .slider-section { margin-top: 1.5rem; }
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .slider-lbl { font-size: 12px; color: var(--text-muted); font-family: var(--mono); min-width: 200px; }
+  .slider-row input[type=range] {
+    flex: 1;
+    accent-color: var(--green);
+    height: 4px;
+  }
+  .slider-val { font-size: 12px; font-family: var(--mono); color: var(--green); min-width: 80px; text-align: right; }
+
+  /* Tibber data rows */
+  .tibber-rows { display: flex; flex-direction: column; gap: 8px; }
+  .tibber-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .tibber-row-label { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+  .tibber-row-val { font-size: 14px; font-weight: 600; font-family: var(--mono); color: var(--text); }
+  .tibber-row-val.green { color: var(--green); }
+  .tibber-row-val.amber { color: var(--amber); }
+  .tibber-row-val.blue { color: var(--blue); }
+
+  /* Error/loading */
+  .msg { font-size: 12px; font-family: var(--mono); padding: 10px 14px; border-radius: 8px; }
+  .msg.loading { color: var(--text-muted); background: rgba(255,255,255,0.03); }
+  .msg.error { color: #f55; background: rgba(255,80,80,0.06); border: 1px solid rgba(255,80,80,0.15); }
+  .msg.success { color: var(--green); }
+
+  /* Footer */
+  footer {
+    margin-top: 3rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Refresh btn */
+  .refresh-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 8px;
+    padding: 6px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .refresh-btn:hover { border-color: var(--green); color: var(--green); }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="header-left">
+      <div class="site-name">Solcelle Dashboard</div>
+      <h1>Vestliveien 20B</h1>
+      <div class="header-meta">10 kWp · Growatt · Tibber · Installert juni 2024</div>
+    </div>
+    <div class="header-right">
+      <div class="status-dot" id="status-dot"></div>
+      <div class="status-txt" id="status-txt">Ikke tilkoblet</div>
+      <button class="refresh-btn" onclick="loadTibber()">↻ Oppdater</button>
+    </div>
+  </header>
+
+  <!-- Token setup -->
+  <div class="setup-card" id="setup-card">
+    <div class="setup-label">Tibber API</div>
+    <input type="text" id="token-input" placeholder="Lim inn Tibber Access Token her..." autocomplete="off">
+    <button onclick="saveToken()">Koble til</button>
+    <div class="setup-hint">Token lagres kun i nettleseren din (localStorage). Finner du den på developer.tibber.com → Account.</div>
+  </div>
+
+  <!-- Primary metrics -->
+  <div class="section-title">Denne måneden</div>
+  <div class="metrics-primary">
+    <div class="metric-big">
+      <div class="metric-tag">Solgt til nett</div>
+      <div class="metric-val" id="m-sold">–<span class="metric-unit">kr</span></div>
+      <div class="metric-sub" id="m-sold-kwh">– kWh · Tibber live</div>
+    </div>
+    <div class="metric-big amber">
+      <div class="metric-tag">Kjøpt fra nett</div>
+      <div class="metric-val" id="m-bought">–<span class="metric-unit">kr</span></div>
+      <div class="metric-sub" id="m-bought-kwh">– kWh · Tibber live</div>
+    </div>
+    <div class="metric-big">
+      <div class="metric-tag">Produsert (Growatt)</div>
+      <div class="metric-val" id="m-prod">–<span class="metric-unit">kWh</span></div>
+      <div class="metric-sub">Manuelt fra Growatt-appen</div>
+    </div>
+    <div class="metric-big blue">
+      <div class="metric-tag">Spotpris nå</div>
+      <div class="metric-val" id="m-price">–<span class="metric-unit">kr/kWh</span></div>
+      <div class="metric-sub" id="m-price-sub">Tibber live</div>
+    </div>
+  </div>
+
+  <!-- Tibber detaljer -->
+  <div class="section-title">Tibber – live data</div>
+  <div class="chart-card">
+    <div id="tibber-status" class="msg loading">Venter på tilkobling – lim inn Tibber-token ovenfor.</div>
+    <div class="tibber-rows" id="tibber-rows" style="display:none">
+      <div class="tibber-row">
+        <span class="tibber-row-label">Strømpris akkurat nå</span>
+        <span class="tibber-row-val blue" id="t-price">–</span>
+      </div>
+      <div class="tibber-row">
+        <span class="tibber-row-label">Solgt til nett – i dag</span>
+        <span class="tibber-row-val green" id="t-sold-today">–</span>
+      </div>
+      <div class="tibber-row">
+        <span class="tibber-row-label">Solgt til nett – denne måneden</span>
+        <span class="tibber-row-val green" id="t-sold-month">–</span>
+      </div>
+      <div class="tibber-row">
+        <span class="tibber-row-label">Kjøpt fra nett – i dag</span>
+        <span class="tibber-row-val amber" id="t-bought-today">–</span>
+      </div>
+      <div class="tibber-row">
+        <span class="tibber-row-label">Kjøpt fra nett – denne måneden</span>
+        <span class="tibber-row-val amber" id="t-bought-month">–</span>
+      </div>
+      <div class="tibber-row">
+        <span class="tibber-row-label">Abonnement</span>
+        <span class="tibber-row-val" id="t-home">–</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Månedlig chart -->
+  <div class="section-title">Produksjon per måned (Growatt)</div>
+  <div class="chart-card">
+    <div class="chart-header">
+      <div class="chart-title">kWh produsert</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4ad278"></div>Produsert</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f5c842"></div>Solgt (Tibber)</div>
+      </div>
+    </div>
+    <div class="bars" id="prod-bars"></div>
+  </div>
+
+  <!-- Growatt manuell input -->
+  <div class="section-title">Growatt – månedsproduksjon (manuelt)</div>
+  <div class="manual-card">
+    <div class="manual-title">Oppdater fra Growatt-appen</div>
+    <div class="manual-grid" id="manual-grid"></div>
+    <button class="manual-save" onclick="saveManual()">Lagre produksjonsdata</button>
+  </div>
+
+  <!-- Nedbetalingskalkulator -->
+  <div class="section-title">Nedbetalingskalkulator</div>
+  <div class="two-col">
+    <div class="payback-card">
+      <div class="payback-headline">Estimert nedbetalingstid</div>
+      <div class="payback-years" id="pb-years">–<span>år</span></div>
+      <div class="payback-track-wrap">
+        <div class="payback-track">
+          <div class="payback-fill" id="pb-fill" style="width:0%"></div>
+        </div>
+        <div class="payback-axis"><span>Installert 2024</span><span>25 år</span></div>
+      </div>
+      <div class="tibber-rows">
+        <div class="tibber-row">
+          <span class="tibber-row-label">Anleggskostnad</span>
+          <span class="tibber-row-val" id="pb-cost">80 000 kr</span>
+        </div>
+        <div class="tibber-row">
+          <span class="tibber-row-label">Inntekt salg/år (est.)</span>
+          <span class="tibber-row-val green" id="pb-income">–</span>
+        </div>
+        <div class="tibber-row">
+          <span class="tibber-row-label">Total verdi/år (est.)</span>
+          <span class="tibber-row-val green" id="pb-total">–</span>
+        </div>
+      </div>
+    </div>
+    <div class="payback-card">
+      <div class="payback-headline">Juster forutsetninger</div>
+      <div class="slider-section">
+        <div class="slider-row">
+          <span class="slider-lbl">Besparelse egenbruk – dag (kr/kWh)</span>
+          <input type="range" id="sl-buy" min="0.50" max="2.00" step="0.01" value="0.894" oninput="updatePayback()">
+          <span class="slider-val" id="sv-buy">0,89</span>
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);margin:-6px 0 10px 0;padding-left:200px">
+          Norgespris 0,53 + nettleie dag 0,364 = 0,894 kr/kWh
+        </div>
+        <div class="slider-row">
+          <span class="slider-lbl">Besparelse egenbruk – natt (kr/kWh)</span>
+          <input type="range" id="sl-buy-natt" min="0.50" max="2.00" step="0.01" value="0.794" oninput="updatePayback()">
+          <span class="slider-val" id="sv-buy-natt">0,79</span>
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);margin:-6px 0 10px 0;padding-left:200px">
+          Norgespris 0,53 + nettleie natt 0,264 = 0,794 kr/kWh
+        </div>
+        <div class="slider-row">
+          <span class="slider-lbl">Salgspris spot ex. mva (kr/kWh)</span>
+          <input type="range" id="sl-sell" min="0.05" max="2.0" step="0.01" value="0.50" oninput="updatePayback()">
+          <span class="slider-val" id="sv-sell">0,50</span>
+        </div>
+        <div style="font-size:10px;color:var(--text-dim);font-family:var(--mono);margin:-6px 0 10px 0;padding-left:200px">
+          Markedspris uten mva – hentes live fra Tibber
+        </div>
+        <div class="slider-row">
+          <span class="slider-lbl">Andel egenkonsumert (%)</span>
+          <input type="range" id="sl-self" min="20" max="90" step="5" value="70" oninput="updatePayback()">
+          <span class="slider-val" id="sv-self">70 %</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-lbl">Forventet årsproduksjon (kWh)</span>
+          <input type="range" id="sl-annual" min="3000" max="20000" step="250" value="9000" oninput="updatePayback()">
+          <span class="slider-val" id="sv-annual">9 000</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Vestliveien 20B · 10 kWp · Growatt + Tibber</span>
+    <span id="last-updated">Sist oppdatert: –</span>
+  </footer>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────
+const ANLEGG_KOSTNAD = 80000;
+const INSTALL_DATE = new Date('2024-06-06');
+const MONTHS_NO = ['jan','feb','mar','apr','mai','jun','jul','aug','sep','okt','nov','des'];
+
+// ── Norgespris 2026 + nettleie ─────────────────────────────────────────
+const NORGESPRIS       = 0.53;    // kr/kWh ink. mva – fast hele 2026
+const NETTLEIE_DAG     = 0.364;   // kr/kWh 06–22
+const NETTLEIE_NATT    = 0.264;   // kr/kWh 22–06
+const KJØPSPRIS_DAG    = NORGESPRIS + NETTLEIE_DAG;    // 0,894 kr/kWh
+const KJØPSPRIS_NATT   = NORGESPRIS + NETTLEIE_NATT;   // 0,794 kr/kWh
+// Sol produseres kun på dagtid → egenbruk-besparelse = dagpris
+const BESPARELSE_SNITT = KJØPSPRIS_DAG;
+
+let tibberData = null;
+let liveSellPrice = null; // spot ex. mva fra Tibber
+
+// ── Local storage helpers ──────────────────────────────────────────────
+function getToken() { return localStorage.getItem('tibber_token') || ''; }
+function getManual() {
+  try { return JSON.parse(localStorage.getItem('growatt_manual') || 'null') || defaultManual(); }
+  catch { return defaultManual(); }
+}
+function defaultManual() {
+  const m = {};
+  MONTHS_NO.forEach(mn => m[mn] = 0);
+  // Pre-fill from Growatt screenshots: installed June 2024, total 12399 kWh
+  // Typical 10kWp Norway profile
+  const profile = { jun:900, jul:1050, aug:950, sep:650, okt:320, nov:120, des:60, jan:90, feb:200, mar:600, apr:241 };
+  Object.assign(m, profile);
+  return m;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const token = getToken();
+  if (token) {
+    document.getElementById('token-input').value = '••••••••••••••••••••••••••••••••••';
+    document.getElementById('setup-card').style.borderColor = 'rgba(74,210,120,0.3)';
+    loadTibber();
+  }
+  buildManualGrid();
+  renderBars();
+  updatePayback();
+});
+
+// ── Token ──────────────────────────────────────────────────────────────
+function saveToken() {
+  const val = document.getElementById('token-input').value.trim();
+  if (!val || val.startsWith('•')) { alert('Lim inn Tibber-token'); return; }
+  localStorage.setItem('tibber_token', val);
+  document.getElementById('token-input').value = '••••••••••••••••••••••••••••••••••';
+  document.getElementById('setup-card').style.borderColor = 'rgba(74,210,120,0.3)';
+  loadTibber();
+}
+
+// ── Tibber API ─────────────────────────────────────────────────────────
+async function loadTibber() {
+  const token = getToken();
+  if (!token) return;
+
+  const statusEl = document.getElementById('tibber-status');
+  statusEl.className = 'msg loading';
+  statusEl.textContent = 'Henter data fra Tibber...';
+  statusEl.style.display = 'block';
+  document.getElementById('tibber-rows').style.display = 'none';
+  document.getElementById('status-txt').textContent = 'Kobler til...';
+
+  const now = new Date();
+  const y = now.getFullYear();
+  const mo = String(now.getMonth()+1).padStart(2,'0');
+  const monthStart = `${y}-${mo}-01T00:00:00`;
+
+  const query = `{
+    viewer {
+      name
+      homes {
+        address { address1 }
+        currentSubscription {
+          priceInfo {
+            current { total currency }
+          }
+        }
+        consumption(resolution: MONTHLY, last: 12) {
+          nodes { from to consumption cost }
+        }
+        production(resolution: MONTHLY, last: 12) {
+          nodes { from to production profit }
+        }
+        dailyConsumption: consumption(resolution: DAILY, last: 30) {
+          nodes { from to consumption cost }
+        }
+        dailyProduction: production(resolution: DAILY, last: 30) {
+          nodes { from to production profit }
+        }
+      }
+    }
+  }`;
+
+  try {
+    const res = await fetch('https://api.tibber.com/v1-beta/gql', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ query })
+    });
+    const data = await res.json();
+    if (data.errors) throw new Error(data.errors[0].message);
+
+    const viewer = data.data.viewer;
+    // Finn riktig abonnement – Vestliveien 20B
+    const home = viewer.homes.find(h =>
+      h.address?.address1?.toLowerCase().includes('vestliveien')
+    ) || viewer.homes.find(h =>
+      (h.production?.nodes?.length > 0)
+    ) || viewer.homes[0];
+    tibberData = { viewer, home };
+
+    renderTibber(home);
+    document.getElementById('status-txt').textContent = 'Tilkoblet ✓';
+    document.getElementById('status-dot').style.background = '#4ad278';
+    document.getElementById('last-updated').textContent = 'Sist oppdatert: ' + now.toLocaleTimeString('nb-NO');
+
+  } catch(e) {
+    statusEl.className = 'msg error';
+    statusEl.textContent = 'Feil: ' + e.message + '. Sjekk at token er korrekt.';
+    statusEl.style.display = 'block';
+    document.getElementById('status-txt').textContent = 'Feil';
+    document.getElementById('status-dot').style.background = '#f55';
+  }
+}
+
+function renderTibber(home) {
+  const statusEl = document.getElementById('tibber-status');
+  statusEl.style.display = 'none';
+  document.getElementById('tibber-rows').style.display = 'flex';
+
+  // Current price (spot ex. mva = price / 1.25)
+  const priceInkMva = home.currentSubscription?.priceInfo?.current?.total;
+  const spotExMva = priceInkMva != null ? priceInkMva / 1.25 : null;
+  liveSellPrice = spotExMva;
+  const priceStr = priceInkMva != null ? priceInkMva.toFixed(2).replace('.',',') + ' kr/kWh' : '–';
+  document.getElementById('t-price').textContent = priceStr + (spotExMva ? ' (salg: ' + spotExMva.toFixed(2).replace('.',',') + ' ex. mva)' : '');
+  document.getElementById('m-price').innerHTML = priceInkMva != null
+    ? priceInkMva.toFixed(2).replace('.',',') + '<span class="metric-unit">kr/kWh</span>' : '–';
+  document.getElementById('m-price-sub').textContent = spotExMva
+    ? 'Salg: ' + spotExMva.toFixed(2).replace('.',',') + ' kr/kWh ex. mva' : 'Tibber live';
+
+  // Oppdater kun salgs-slider fra Tibber – kjøpspris er låst til Norgespris + nettleie
+  if (spotExMva) document.getElementById('sl-sell').value = Math.min(Math.max(spotExMva, 0.05), 2.0);
+
+  // Monthly production/consumption
+  const now = new Date();
+  const thisMonth = now.getMonth();
+  const thisYear = now.getFullYear();
+
+  const monthlyProd = home.production?.nodes || [];
+  const monthlyConsump = home.consumption?.nodes || [];
+
+  const soldThisMonth = monthlyProd.filter(n => {
+    const d = new Date(n.from);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  }).reduce((s,n) => s + (n.profit||0), 0);
+
+  const soldKwhMonth = monthlyProd.filter(n => {
+    const d = new Date(n.from);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  }).reduce((s,n) => s + (n.production||0), 0);
+
+  const boughtThisMonth = monthlyConsump.filter(n => {
+    const d = new Date(n.from);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  }).reduce((s,n) => s + (n.cost||0), 0);
+
+  const boughtKwhMonth = monthlyConsump.filter(n => {
+    const d = new Date(n.from);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  }).reduce((s,n) => s + (n.consumption||0), 0);
+
+  // Daily totals
+  const dailyProd = home.dailyProduction?.nodes || [];
+  const dailyConsump = home.dailyConsumption?.nodes || [];
+  const today = new Date().toDateString();
+
+  const soldToday = dailyProd.filter(n => new Date(n.from).toDateString() === today)
+    .reduce((s,n) => s + (n.profit||0), 0);
+  const boughtToday = dailyConsump.filter(n => new Date(n.from).toDateString() === today)
+    .reduce((s,n) => s + (n.cost||0), 0);
+
+  // Render
+  const soldToday = dailyProd.filter(n => new Date(n.from).toDateString() === today)
+    .reduce((s,n) => s + (n.profit||0), 0);
+  const soldKwhToday = dailyProd.filter(n => new Date(n.from).toDateString() === today)
+    .reduce((s,n) => s + (n.production||0), 0);
+  const boughtToday = dailyConsump.filter(n => new Date(n.from).toDateString() === today)
+    .reduce((s,n) => s + (n.cost||0), 0);
+
+  const harSalgsdata = monthlyProd.some(n => (n.production||0) > 0);
+  const harDagSalg = dailyProd.some(n => (n.production||0) > 0);
+
+  document.getElementById('t-sold-today').textContent = harDagSalg
+    ? soldKwhToday.toFixed(1) + ' kWh → ' + soldToday.toFixed(0) + ' kr'
+    : 'Ingen salgsdata i dag (Tibber mottar ikke produksjon)';
+
+  document.getElementById('t-sold-month').textContent = harSalgsdata
+    ? soldKwhMonth.toFixed(0) + ' kWh → ' + soldThisMonth.toFixed(0) + ' kr'
+    : '⚠ Tibber mottar ingen produksjonsdata. Sjekk at måleren på Vestliveien er registrert som produksjonsmåler hos nettselskapet.';
+
+  document.getElementById('t-bought-today').textContent = boughtToday.toFixed(0) + ' kr';
+  document.getElementById('t-bought-month').textContent = boughtKwhMonth.toFixed(0) + ' kWh → ' + boughtThisMonth.toFixed(0) + ' kr';
+  document.getElementById('t-home').textContent = (home.address?.address1 || '–') + ' (' + (harSalgsdata ? '✓ produksjon registrert' : '⚠ ingen produksjonsdata') + ')';
+
+  // Update top metrics
+  document.getElementById('m-sold').innerHTML = soldThisMonth.toFixed(0) + '<span class="metric-unit">kr</span>';
+  document.getElementById('m-sold-kwh').textContent = soldKwhMonth.toFixed(0) + ' kWh · Tibber live';
+  document.getElementById('m-bought').innerHTML = boughtThisMonth.toFixed(0) + '<span class="metric-unit">kr</span>';
+  document.getElementById('m-bought-kwh').textContent = boughtKwhMonth.toFixed(0) + ' kWh · Tibber live';
+
+  // Update chart with Tibber sold data per month
+  renderBars(monthlyProd);
+  updatePayback();
+}
+
+// ── Manual Growatt input ───────────────────────────────────────────────
+function buildManualGrid() {
+  const manual = getManual();
+  const grid = document.getElementById('manual-grid');
+  grid.innerHTML = '';
+  MONTHS_NO.forEach(mn => {
+    const wrap = document.createElement('div');
+    wrap.className = 'manual-input-wrap';
+    wrap.innerHTML = `<label class="manual-input-label">${mn}</label>
+      <input type="number" id="mi-${mn}" value="${manual[mn] || 0}" min="0" max="2000" step="10">`;
+    grid.appendChild(wrap);
+  });
+  updateManualMetric();
+}
+
+function saveManual() {
+  const manual = {};
+  MONTHS_NO.forEach(mn => {
+    manual[mn] = parseFloat(document.getElementById('mi-'+mn)?.value || 0);
+  });
+  localStorage.setItem('growatt_manual', JSON.stringify(manual));
+  updateManualMetric();
+  renderBars();
+  updatePayback();
+  const btn = document.querySelector('.manual-save');
+  btn.textContent = 'Lagret ✓';
+  setTimeout(() => btn.textContent = 'Lagre produksjonsdata', 2000);
+}
+
+function updateManualMetric() {
+  const manual = getManual();
+  const thisMonth = MONTHS_NO[new Date().getMonth()];
+  const val = manual[thisMonth] || 0;
+  document.getElementById('m-prod').innerHTML = val + '<span class="metric-unit">kWh</span>';
+}
+
+// ── Bar chart ──────────────────────────────────────────────────────────
+function renderBars(tibberMonthly) {
+  const manual = getManual();
+  const container = document.getElementById('prod-bars');
+  container.innerHTML = '';
+
+  // Build 12 months from install date
+  const months = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    if (d >= INSTALL_DATE) {
+      months.push({ year: d.getFullYear(), month: d.getMonth(), label: MONTHS_NO[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2) });
+    }
+  }
+
+  const maxProd = Math.max(...months.map(m => manual[MONTHS_NO[m.month]] || 0), 1);
+
+  months.forEach(m => {
+    const prod = manual[MONTHS_NO[m.month]] || 0;
+
+    // Try to find matching Tibber sold data
+    let soldKwh = 0;
+    if (tibberMonthly) {
+      const node = tibberMonthly.find(n => {
+        const d = new Date(n.from);
+        return d.getMonth() === m.month && d.getFullYear() === m.year;
+      });
+      soldKwh = node?.production || 0;
+    }
+
+    const prodW = Math.round((prod / maxProd) * 100);
+    const sellW = prod > 0 ? Math.round((soldKwh / prod) * prodW) : 0;
+    const selfW = Math.max(prodW - sellW, 0);
+
+    const row = document.createElement('div');
+    row.className = 'bar-row';
+    row.innerHTML = `
+      <span class="bar-month">${m.label}</span>
+      <div class="bar-track">
+        <div class="bar-seg" style="background:#2a7a47; width:${selfW}%"></div>
+        <div class="bar-seg" style="background:#f5c842; width:${sellW}%"></div>
+        <span class="bar-num">${prod > 0 ? prod + ' kWh' : '–'}</span>
+      </div>`;
+    container.appendChild(row);
+  });
+}
+
+// ── Payback ────────────────────────────────────────────────────────────
+function updatePayback() {
+  const buyDag  = parseFloat(document.getElementById('sl-buy').value);
+  const buyNatt = parseFloat(document.getElementById('sl-buy-natt').value);
+  const sell    = parseFloat(document.getElementById('sl-sell').value);
+  const selfPct = parseFloat(document.getElementById('sl-self').value) / 100;
+  const annual  = parseFloat(document.getElementById('sl-annual').value);
+
+  document.getElementById('sv-buy').textContent      = buyDag.toFixed(2).replace('.',',');
+  document.getElementById('sv-buy-natt').textContent = buyNatt.toFixed(2).replace('.',',');
+  document.getElementById('sv-sell').textContent     = sell.toFixed(2).replace('.',',');
+  document.getElementById('sv-self').textContent     = Math.round(selfPct*100) + ' %';
+  document.getElementById('sv-annual').textContent   = annual.toLocaleString('nb-NO');
+
+  // Solproduksjon skjer kun i dagstimer → egenbruk-besparelse er alltid dagpris
+  const selfKwh = annual * selfPct;
+  const soldKwh = annual * (1 - selfPct);
+  const saving  = Math.round(selfKwh * buyDag);   // spart = dagpris (sol = dag)
+  const income  = Math.round(soldKwh * sell);      // inntekt = spot ex. mva
+  const total   = saving + income;
+  const years   = total > 0 ? ANLEGG_KOSTNAD / total : 99;
+  const pct     = Math.min(Math.round((years / 25) * 100), 100);
+
+  document.getElementById('pb-years').innerHTML = years.toFixed(1).replace('.',',') + '<span>år</span>';
+  document.getElementById('pb-fill').style.width = pct + '%';
+  document.getElementById('pb-income').textContent = income.toLocaleString('nb-NO') + ' kr  (' + soldKwh.toFixed(0) + ' kWh × ' + sell.toFixed(2).replace('.',',') + ' kr)';
+  document.getElementById('pb-total').textContent  = total.toLocaleString('nb-NO') + ' kr/år  (spart: ' + saving.toLocaleString('nb-NO') + ' + salg: ' + income.toLocaleString('nb-NO') + ')';
+}
+</script>
+</body>
+</html>
