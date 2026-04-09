@@ -610,13 +610,39 @@ const getManual = () => { try { return JSON.parse(localStorage.getItem('growatt_
 
 function defaultManual() {
   const m = {};
-  MONTHS_NO.forEach(mn => m[mn + '_2025'] = 0);
-  MONTHS_NO.forEach(mn => m[mn + '_2026'] = 0);
-  return m;
+  // Forhåndsutfylt med kjente Growatt-tall fra skjermbilder
+  const known = {
+    'jun_2024': 900, 'jul_2024': 1050, 'aug_2024': 950, 'sep_2024': 650,
+    'okt_2024': 320, 'nov_2024': 120,  'des_2024': 60,
+    'jan_2025': 90,  'feb_2025': 200,  'mar_2025': 600,
+    'apr_2025': 0,   'mai_2025': 0,    'jun_2025': 0,   'jul_2025': 0,
+    'aug_2025': 0,   'sep_2025': 0,    'okt_2025': 0,   'nov_2025': 0,
+    'des_2025': 0,   'jan_2026': 0,    'feb_2026': 0,   'mar_2026': 0,
+    'apr_2026': 241
+  };
+  return known;
+}
+
+function migrateManual() {
+  // Migrer gamle nøkler uten år til nytt format med år
+  const raw = localStorage.getItem('growatt_manual');
+  if (!raw) return;
+  try {
+    const old = JSON.parse(raw);
+    const hasYear = Object.keys(old).some(k => k.includes('_20'));
+    if (hasYear) return; // allerede nytt format
+    // Gammel data – prøv å mappe måneder til 2025 (mest sannsynlig)
+    const migrated = defaultManual();
+    MONTHS_NO.forEach(mn => {
+      if (old[mn] && old[mn] > 0) migrated[mn + '_2025'] = old[mn];
+    });
+    localStorage.setItem('growatt_manual', JSON.stringify(migrated));
+  } catch(e) {}
 }
 
 // ── Init ───────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
+  migrateManual();
   buildManualGrid();
   updatePayback();
   const token = getToken();
