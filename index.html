@@ -691,21 +691,22 @@ async function loadTibber() {
       name
       homes {
         address { address1 }
+        features { isProductionMetered }
         currentSubscription {
           priceInfo {
             current { total currency }
           }
         }
-        consumption(resolution: MONTHLY, last: 12) {
+        consumption(resolution: MONTHLY, last: 13) {
           nodes { from to consumption cost }
         }
-        production(resolution: MONTHLY, last: 12) {
+        production(resolution: MONTHLY, last: 13) {
           nodes { from to production profit }
         }
-        dailyConsumption: consumption(resolution: DAILY, last: 30) {
+        dailyConsumption: consumption(resolution: DAILY, last: 31) {
           nodes { from to consumption cost }
         }
-        dailyProduction: production(resolution: DAILY, last: 30) {
+        dailyProduction: production(resolution: DAILY, last: 31) {
           nodes { from to production profit }
         }
       }
@@ -732,6 +733,19 @@ async function loadTibber() {
       (h.production?.nodes?.length > 0)
     ) || viewer.homes[0];
     tibberData = { viewer, home };
+
+    // Debug: logg til konsoll så vi kan se hva Tibber returnerer
+    console.log('=== TIBBER DEBUG ===');
+    console.log('Valgt abonnement:', home.address?.address1);
+    console.log('isProductionMetered:', home.features?.isProductionMetered);
+    console.log('Månedlig produksjon (nodes):', JSON.stringify(home.production?.nodes));
+    console.log('Daglig produksjon (siste 5):', JSON.stringify(home.dailyProduction?.nodes?.slice(-5)));
+    console.log('Alle homes:', viewer.homes.map(h => ({
+      adresse: h.address?.address1,
+      prodMetered: h.features?.isProductionMetered,
+      prodNodes: h.production?.nodes?.length,
+      prodKwh: h.production?.nodes?.reduce((s,n) => s+(n.production||0), 0)
+    })));
 
     renderTibber(home);
     document.getElementById('status-txt').textContent = 'Tilkoblet ✓';
@@ -799,12 +813,6 @@ function renderTibber(home) {
   const dailyConsump = home.dailyConsumption?.nodes || [];
   const today = new Date().toDateString();
 
-  const soldToday = dailyProd.filter(n => new Date(n.from).toDateString() === today)
-    .reduce((s,n) => s + (n.profit||0), 0);
-  const boughtToday = dailyConsump.filter(n => new Date(n.from).toDateString() === today)
-    .reduce((s,n) => s + (n.cost||0), 0);
-
-  // Render
   const soldToday = dailyProd.filter(n => new Date(n.from).toDateString() === today)
     .reduce((s,n) => s + (n.profit||0), 0);
   const soldKwhToday = dailyProd.filter(n => new Date(n.from).toDateString() === today)
