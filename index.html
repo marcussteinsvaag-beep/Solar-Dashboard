@@ -851,8 +851,8 @@ function renderTibber(home) {
   document.getElementById('m-bought').innerHTML = boughtThisMonth.toFixed(0) + '<span class="metric-unit">kr</span>';
   document.getElementById('m-bought-kwh').textContent = boughtKwhMonth.toFixed(0) + ' kWh · Tibber live';
 
-  // Update chart with Tibber sold data per month
-  renderBars(monthlyProd);
+  // Update chart – bruk månedlige data for historikk + timesdata for inneværende måned
+  renderBars(monthlyProd, { month: thisMonth, year: thisYear, kwh: soldKwhMonth, kr: soldThisMonth });
   updatePayback();
 }
 
@@ -893,12 +893,11 @@ function updateManualMetric() {
 }
 
 // ── Bar chart ──────────────────────────────────────────────────────────
-function renderBars(tibberMonthly) {
+function renderBars(tibberMonthly, currentMonthOverride) {
   const manual = getManual();
   const container = document.getElementById('prod-bars');
   container.innerHTML = '';
 
-  // Build 12 months from install date
   const months = [];
   const now = new Date();
   for (let i = 11; i >= 0; i--) {
@@ -912,10 +911,12 @@ function renderBars(tibberMonthly) {
 
   months.forEach(m => {
     const prod = manual[MONTHS_NO[m.month]] || 0;
-
-    // Try to find matching Tibber sold data
     let soldKwh = 0;
-    if (tibberMonthly) {
+
+    // Inneværende måned: bruk timesdata-override
+    if (currentMonthOverride && m.month === currentMonthOverride.month && m.year === currentMonthOverride.year) {
+      soldKwh = currentMonthOverride.kwh || 0;
+    } else if (tibberMonthly) {
       const node = tibberMonthly.find(n => {
         const d = new Date(n.from);
         return d.getMonth() === m.month && d.getFullYear() === m.year;
