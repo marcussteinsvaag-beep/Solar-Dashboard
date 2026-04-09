@@ -682,9 +682,9 @@ async function loadTibber() {
   document.getElementById('status-txt').textContent = 'Kobler til...';
 
   const now = new Date();
-  const y = now.getFullYear();
-  const mo = String(now.getMonth()+1).padStart(2,'0');
-  const monthStart = `${y}-${mo}-01T00:00:00`;
+  const daysThisMonth = now.getDate();
+  const hoursThisMonth = daysThisMonth * 24;
+  const hoursToFetch = Math.max(hoursThisMonth, 48);
 
   const query = `{
     viewer {
@@ -700,6 +700,12 @@ async function loadTibber() {
           nodes { from to consumption cost }
         }
         production(resolution: MONTHLY, last: 13) {
+          nodes { from to production profit }
+        }
+        hourlyConsumption: consumption(resolution: HOURLY, last: ${hoursToFetch}) {
+          nodes { from to consumption cost }
+        }
+        hourlyProduction: production(resolution: HOURLY, last: ${hoursToFetch}) {
           nodes { from to production profit }
         }
         dailyConsumption: consumption(resolution: DAILY, last: 31) {
@@ -746,15 +752,13 @@ async function loadTibber() {
 
     // Vis debug på siden også
     const debugEl = document.getElementById('tibber-status');
-    const allProd = home.production?.nodes || [];
-    const allDaily = home.dailyProduction?.nodes || [];
-    const totalProdKwh = allProd.reduce((s,n) => s+(n.production||0), 0);
-    const totalProdKr = allProd.reduce((s,n) => s+(n.profit||0), 0);
-    const dailyWithData = allDaily.filter(n => (n.production||0) > 0);
+    const totalProdKwh = hourlyProd.reduce((s,n) => s+(n.production||0), 0);
+    const totalProdKr = hourlyProd.reduce((s,n) => s+(n.profit||0), 0);
+    const dailyWithData = hourlyProd.filter(n => (n.production||0) > 0);
     debugEl.className = totalProdKwh > 0 ? 'msg success' : 'msg error';
     debugEl.textContent = totalProdKwh > 0
-      ? `✓ Tibber har ${allProd.length} måneder produksjonsdata. Totalt: ${totalProdKwh.toFixed(0)} kWh / ${totalProdKr.toFixed(0)} kr. Daglige noder med data: ${dailyWithData.length}`
-      : `⚠ Tibber returnerer 0 kWh i alle ${allProd.length} produksjonsnoder. Daglige noder: ${allDaily.length}, noder med data: ${dailyWithData.length}. Sjekk konsoll (F12) for rådata.`;
+      ? `✓ Tibber har produksjonsdata. Totalt siste periode: ${totalProdKwh.toFixed(0)} kWh / ${totalProdKr.toFixed(0)} kr. Timer med data: ${dailyWithData.length}`
+      : `⚠ Tibber returnerer 0 kWh i alle ${hourlyProd.length} produksjonsnoder. Sjekk konsoll (F12) for rådata.`;
     debugEl.style.display = 'block';
 
     renderTibber(home);
@@ -794,44 +798,40 @@ function renderTibber(home) {
   const now = new Date();
   const thisMonth = now.getMonth();
   const thisYear = now.getFullYear();
+  const today = now.toDateString();
 
   const monthlyProd = home.production?.nodes || [];
   const monthlyConsump = home.consumption?.nodes || [];
-
-  const soldThisMonth = monthlyProd.filter(n => {
-    const d = new Date(n.from);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-  }).reduce((s,n) => s + (n.profit||0), 0);
-
-  const soldKwhMonth = monthlyProd.filter(n => {
-    const d = new Date(n.from);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-  }).reduce((s,n) => s + (n.production||0), 0);
-
-  const boughtThisMonth = monthlyConsump.filter(n => {
-    const d = new Date(n.from);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-  }).reduce((s,n) => s + (n.cost||0), 0);
-
-  const boughtKwhMonth = monthlyConsump.filter(n => {
-    const d = new Date(n.from);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-  }).reduce((s,n) => s + (n.consumption||0), 0);
-
-  // Daily totals
+  const hourlyProd = home.hourlyProduction?.nodes || [];
+  const hourlyConsump = home.hourlyConsumption?.nodes || [];
   const dailyProd = home.dailyProduction?.nodes || [];
   const dailyConsump = home.dailyConsumption?.nodes || [];
-  const today = new Date().toDateString();
 
-  const soldToday = dailyProd.filter(n => new Date(n.from).toDateString() === today)
+  // Bruk timesdata for inneværende måned – mer pålitelig enn månedlig aggregering
+  const hourlyProdMonth = hourlyProd.filter(n => {
+    const d = new Date(n.from);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  });
+  const hourlyConsumpMonth = hourlyConsump.filter(n => {
+    const d = new Date(n.from);
+    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
+  });
+
+  const soldThisMonth = hourlyProdMonth.reduce((s,n) => s + (n.profit||0), 0);
+  const soldKwhMonth = hourlyProdMonth.reduce((s,n) => s + (n.production||0), 0);
+  const boughtThisMonth = hourlyConsumpMonth.reduce((s,n) => s + (n.cost||0), 0);
+  const boughtKwhMonth = hourlyConsumpMonth.reduce((s,n) => s + (n.consumption||0), 0);
+
+  // Dagstotaler fra timesdata
+  const soldToday = hourlyProd.filter(n => new Date(n.from).toDateString() === today)
     .reduce((s,n) => s + (n.profit||0), 0);
-  const soldKwhToday = dailyProd.filter(n => new Date(n.from).toDateString() === today)
+  const soldKwhToday = hourlyProd.filter(n => new Date(n.from).toDateString() === today)
     .reduce((s,n) => s + (n.production||0), 0);
-  const boughtToday = dailyConsump.filter(n => new Date(n.from).toDateString() === today)
+  const boughtToday = hourlyConsump.filter(n => new Date(n.from).toDateString() === today)
     .reduce((s,n) => s + (n.cost||0), 0);
 
-  const harSalgsdata = monthlyProd.some(n => (n.production||0) > 0);
-  const harDagSalg = dailyProd.some(n => (n.production||0) > 0);
+  const harSalgsdata = hourlyProd.some(n => (n.production||0) > 0);
+  const harDagSalg = hourlyProd.filter(n => new Date(n.from).toDateString() === today).some(n => (n.production||0) > 0);
 
   document.getElementById('t-sold-today').textContent = harDagSalg
     ? soldKwhToday.toFixed(1) + ' kWh → ' + soldToday.toFixed(0) + ' kr'
