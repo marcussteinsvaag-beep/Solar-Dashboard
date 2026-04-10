@@ -444,6 +444,58 @@ footer {
   gap: 6px;
 }
 
+/* ── HISTORY ── */
+.history-top {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 0.5rem;
+}
+@media (max-width: 640px) { .history-top { grid-template-columns: 1fr; } }
+.history-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.5rem;
+}
+.paydown-card { background: linear-gradient(135deg, #f0faf5 0%, #fff 60%); }
+.paydown-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem; gap: 12px; }
+.paydown-label { font-size: 12px; color: var(--text-muted); margin-bottom: 4px; }
+.paydown-remaining {
+  font-family: var(--serif);
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--green);
+  line-height: 1;
+}
+.paydown-sub { font-size: 12px; color: var(--text-muted); font-family: var(--mono); margin-top: 4px; }
+.paydown-circle-wrap { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+.paydown-circle { width: 80px; height: 80px; }
+.paydown-pct {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; color: var(--green);
+  font-family: var(--mono);
+}
+.paydown-track-wrap { margin-bottom: 4px; }
+.paydown-track {
+  width: 100%; height: 10px;
+  background: var(--green-light);
+  border-radius: 5px; overflow: hidden;
+  border: 1px solid #c8e8d8;
+  margin-bottom: 4px;
+}
+.paydown-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #a8dfc0, var(--green));
+  border-radius: 5px;
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+.paydown-axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); font-family: var(--mono); }
+.accum-chart { margin-bottom: 8px; }
+.accum-legend { display: flex; gap: 14px; flex-wrap: wrap; }
+
 /* ── SUN ICON ── */
 .sun { display: inline-block; animation: spin 12s linear infinite; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
@@ -531,6 +583,56 @@ footer {
       </div>
     </div>
     <div class="bars" id="prod-bars"></div>
+  </div>
+
+  <!-- HISTORISK SPARING + NEDBETALING -->
+  <div class="section-label">Siden installasjon – juni 2024</div>
+  <div class="history-top">
+    <div class="history-card paydown-card">
+      <div class="paydown-header">
+        <div>
+          <div class="paydown-label">Gjenstår til nedbetalt</div>
+          <div class="paydown-remaining" id="pd-remaining">–</div>
+          <div class="paydown-sub" id="pd-sub">av 80 000 kr</div>
+        </div>
+        <div class="paydown-circle-wrap">
+          <svg viewBox="0 0 80 80" class="paydown-circle">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="#e8f5ee" stroke-width="8"/>
+            <circle cx="40" cy="40" r="34" fill="none" stroke="#4aab74" stroke-width="8"
+              stroke-dasharray="213.6" stroke-dashoffset="213.6"
+              stroke-linecap="round" transform="rotate(-90 40 40)"
+              id="pd-circle"/>
+          </svg>
+          <div class="paydown-pct" id="pd-pct">0%</div>
+        </div>
+      </div>
+      <div class="paydown-track-wrap">
+        <div class="paydown-track">
+          <div class="paydown-fill" id="pd-fill" style="width:0%"></div>
+        </div>
+        <div class="paydown-axis">
+          <span>jun 2024</span>
+          <span id="pd-crossdate">–</span>
+        </div>
+      </div>
+      <div class="stat-rows" style="margin-top:12px">
+        <div class="stat-row"><span class="stat-row-label">Totalt innbetalt av anlegget</span><span class="stat-row-val green" id="pd-paid">–</span></div>
+        <div class="stat-row"><span class="stat-row-label">Spart på egenbruk</span><span class="stat-row-val green" id="pd-saved">–</span></div>
+        <div class="stat-row"><span class="stat-row-label">Inntekt fra salg til nett</span><span class="stat-row-val green" id="pd-income">–</span></div>
+        <div class="stat-row"><span class="stat-row-label">Totalt produsert</span><span class="stat-row-val" id="pd-kwh">–</span></div>
+      </div>
+    </div>
+
+    <div class="history-card">
+      <div class="chart-title" style="margin-bottom:1rem">Akkumulert sparing siden installasjon</div>
+      <div class="accum-chart" id="accum-chart">
+        <svg id="accum-svg" width="100%" height="180" viewBox="0 0 400 180" preserveAspectRatio="none"></svg>
+      </div>
+      <div class="accum-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4aab74"></div>Akkumulert verdi (kr)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#e8e0d4; border:1px solid #ccc"></div>Anleggskostnad (80 000 kr)</div>
+      </div>
+    </div>
   </div>
 
   <!-- PAYBACK + SLIDERS -->
@@ -896,6 +998,165 @@ function renderBars(tibberMonthly, currentOverride) {
   });
 }
 
+// ── Historisk sparing ──────────────────────────────────────────────────
+function buildHistoryData() {
+  const manual   = getManual();
+  const buy      = parseFloat(document.getElementById('sl-buy').value)  || KJØPSPRIS_DAG;
+  const sell     = parseFloat(document.getElementById('sl-sell').value) || 0.50;
+  const selfPct  = parseFloat(document.getElementById('sl-self').value) / 100 || 0.70;
+  const now      = new Date();
+
+  // Bygg månedsliste fra installasjon til i dag
+  const months = [];
+  const start  = new Date(2024, 5, 1); // juni 2024
+  let d = new Date(start);
+  while (d <= now) {
+    months.push({ year: d.getFullYear(), month: d.getMonth() });
+    d = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  }
+
+  let accumulated = 0;
+  let totalSaved  = 0;
+  let totalIncome = 0;
+  let totalKwh    = 0;
+  const points    = [];
+
+  months.forEach(m => {
+    const key  = MONTHS_NO[m.month] + '_' + m.year;
+    const prod = manual[key] || 0;
+
+    // Salg fra Tibber månedlig hvis tilgjengelig
+    let soldKwh = 0, soldKr = 0;
+    if (lastTibberMonthly) {
+      const node = lastTibberMonthly.find(n => {
+        const nd = new Date(n.from);
+        return nd.getMonth() === m.month && nd.getFullYear() === m.year;
+      });
+      soldKwh = node?.production || 0;
+      soldKr  = node?.profit     || 0;
+    }
+    // Fallback: beregn fra produksjon og andel
+    if (soldKwh === 0 && prod > 0) {
+      soldKwh = prod * (1 - selfPct);
+      soldKr  = soldKwh * sell;
+    }
+
+    const selfKwh  = prod - soldKwh;
+    const saved    = selfKwh * buy;
+    const monthVal = saved + soldKr;
+
+    accumulated += monthVal;
+    totalSaved  += saved;
+    totalIncome += soldKr;
+    totalKwh    += prod;
+
+    points.push({ label: MONTHS_NO[m.month] + ' ' + String(m.year).slice(2), value: accumulated, month: m.month, year: m.year });
+  });
+
+  return { points, totalSaved, totalIncome, totalKwh, accumulated };
+}
+
+function updateHistory() {
+  const { points, totalSaved, totalIncome, totalKwh, accumulated } = buildHistoryData();
+  const buy  = parseFloat(document.getElementById('sl-buy').value)  || KJØPSPRIS_DAG;
+  const sell = parseFloat(document.getElementById('sl-sell').value) || 0.50;
+  const selfPct = parseFloat(document.getElementById('sl-self').value) / 100 || 0.70;
+  const annual  = parseFloat(document.getElementById('sl-annual').value) || 9000;
+
+  // Nedbetaling
+  const remaining = Math.max(ANLEGG_KOSTNAD - accumulated, 0);
+  const paidPct   = Math.min(accumulated / ANLEGG_KOSTNAD, 1);
+  const pct       = Math.round(paidPct * 100);
+
+  document.getElementById('pd-remaining').textContent = remaining > 0
+    ? remaining.toLocaleString('nb-NO', {maximumFractionDigits:0}) + ' kr'
+    : '🎉 Nedbetalt!';
+  document.getElementById('pd-sub').textContent = accumulated.toLocaleString('nb-NO', {maximumFractionDigits:0}) + ' kr av 80 000 kr innbetalt';
+  document.getElementById('pd-pct').textContent  = pct + '%';
+  document.getElementById('pd-paid').textContent   = accumulated.toLocaleString('nb-NO', {maximumFractionDigits:0}) + ' kr';
+  document.getElementById('pd-saved').textContent  = totalSaved.toLocaleString('nb-NO', {maximumFractionDigits:0}) + ' kr';
+  document.getElementById('pd-income').textContent = totalIncome.toLocaleString('nb-NO', {maximumFractionDigits:0}) + ' kr';
+  document.getElementById('pd-kwh').textContent    = totalKwh.toLocaleString('nb-NO', {maximumFractionDigits:0}) + ' kWh';
+
+  // Sirkel
+  const circumference = 213.6;
+  const offset = circumference - (paidPct * circumference);
+  document.getElementById('pd-circle').style.strokeDashoffset = offset.toFixed(1);
+
+  // Nedbetalingslinje
+  document.getElementById('pd-fill').style.width = pct + '%';
+
+  // Estimert dato for nedbetaling
+  const annualVal = annual * (selfPct * buy + (1-selfPct) * sell);
+  if (remaining > 0 && annualVal > 0) {
+    const monthsLeft = remaining / (annualVal / 12);
+    const crossDate  = new Date();
+    crossDate.setMonth(crossDate.getMonth() + Math.round(monthsLeft));
+    document.getElementById('pd-crossdate').textContent =
+      'Est. nedbetalt ' + MONTHS_NO[crossDate.getMonth()] + ' ' + crossDate.getFullYear();
+  } else {
+    document.getElementById('pd-crossdate').textContent = remaining <= 0 ? '✓ Nedbetalt' : '–';
+  }
+
+  // SVG-kurve
+  renderAccumChart(points);
+}
+
+function renderAccumChart(points) {
+  const svg    = document.getElementById('accum-svg');
+  const W = 400, H = 180, pad = { t:16, r:8, b:28, l:52 };
+  const iW = W - pad.l - pad.r;
+  const iH = H - pad.t - pad.b;
+  const maxVal = Math.max(...points.map(p => p.value), ANLEGG_KOSTNAD);
+
+  const xOf = i  => pad.l + (i / Math.max(points.length - 1, 1)) * iW;
+  const yOf = v  => pad.t + iH - (v / maxVal) * iH;
+
+  // Kostnadslinje
+  const ky = yOf(ANLEGG_KOSTNAD);
+
+  // Kurve-path
+  const pathD = points.map((p,i) => (i===0?'M':'L') + xOf(i).toFixed(1) + ',' + yOf(p.value).toFixed(1)).join(' ');
+  const fillD = pathD + ' L' + xOf(points.length-1).toFixed(1) + ',' + (pad.t+iH) + ' L' + pad.l + ',' + (pad.t+iH) + ' Z';
+
+  // Y-akse labels
+  const ticks = [0, 20000, 40000, 60000, 80000].filter(v => v <= maxVal * 1.05);
+
+  let html = `<defs>
+    <linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#4aab74" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#4aab74" stop-opacity="0.02"/>
+    </linearGradient>
+  </defs>`;
+
+  // Grid + y-labels
+  ticks.forEach(v => {
+    const y = yOf(v).toFixed(1);
+    html += `<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="#e8e0d4" stroke-width="1"/>
+    <text x="${pad.l-6}" y="${y}" text-anchor="end" font-size="9" fill="#9a8e82" dominant-baseline="middle">${v===0?'0':(v/1000)+'k'}</text>`;
+  });
+
+  // Kostnadslinje
+  html += `<line x1="${pad.l}" y1="${ky.toFixed(1)}" x2="${W-pad.r}" y2="${ky.toFixed(1)}" stroke="#c8b890" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="${W-pad.r+4}" y="${ky.toFixed(1)}" font-size="8" fill="#9a8e82" dominant-baseline="middle">80k</text>`;
+
+  // Fylling + kurve
+  html += `<path d="${fillD}" fill="url(#ag)"/>
+  <path d="${pathD}" fill="none" stroke="#4aab74" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>`;
+
+  // Datapunkter – bare hvert 3. for lesbarhet
+  points.forEach((p, i) => {
+    if (i % 3 !== 0 && i !== points.length-1) return;
+    const x = xOf(i).toFixed(1), y = yOf(p.value).toFixed(1);
+    html += `<circle cx="${x}" cy="${y}" r="3" fill="#4aab74"/>`;
+    if (i % 6 === 0 || i === points.length-1) {
+      html += `<text x="${x}" y="${H-8}" text-anchor="middle" font-size="8" fill="#9a8e82">${p.label}</text>`;
+    }
+  });
+
+  svg.innerHTML = html;
+}
+
 // ── Payback ────────────────────────────────────────────────────────────
 function updatePayback() {
   const buy    = parseFloat(document.getElementById('sl-buy').value);
@@ -921,6 +1182,7 @@ function updatePayback() {
   document.getElementById('pb-save').textContent   = saving.toLocaleString('nb-NO') + ' kr';
   document.getElementById('pb-income').textContent = income.toLocaleString('nb-NO') + ' kr';
   document.getElementById('pb-total').textContent  = total.toLocaleString('nb-NO') + ' kr';
+  updateHistory();
 }
 </script>
 </body>
